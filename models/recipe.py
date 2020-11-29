@@ -7,7 +7,7 @@ def get_last_id():
     else:
         return 1
 
-    return last_recipe.id
+    return last_recipe.id+1
 
 
 class Recipe:

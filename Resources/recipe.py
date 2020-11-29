@@ -2,13 +2,12 @@ from flask import request
 from flask_restful import Resource
 from http import HTTPStatus
 from models.recipe import recipe_list, Recipe
+import sys
 
 
 class RecipeListResource(Resource):
-
     def get(self):
         data = []
-
         for recipe in recipe_list:
             if recipe.is_publish:
                 data.append(recipe.data)
@@ -26,6 +25,7 @@ class RecipeListResource(Resource):
         )
 
         recipe_list.append(recipe)
+        print('RecipeList:', recipe_list[-1].data, file=sys.stdout)
         return recipe.data, HTTPStatus.CREATED
 
 
@@ -40,9 +40,10 @@ class RecipeResource(Resource):
             return {'message': 'recipe not found'}, HTTPStatus.NOT_FOUND
 
     def put(self, recipe_id):
+
         data = request.get_json()
 
-        recipe = ((recipe for recipe in recipe_list if recipe_id == recipe.id), None)
+        recipe = next((recipe for recipe in recipe_list if recipe_id == recipe.id), None)
 
         if recipe is not None:
             recipe.name = data['name']
@@ -63,9 +64,9 @@ class RecipePublishResource(Resource):
         if recipe is None:
             return {'message': 'Recipe not found'}, HTTPStatus.NOT_FOUND
 
-        recipe.is_publish = False
+        recipe.is_publish = True
 
-        return {}, HTTPStatus.NO_CONTENT
+        return recipe.data, HTTPStatus.NO_CONTENT
 
     def delete(self, recipe_id):
         recipe = next((recipe for recipe in recipe_list if recipe.id == recipe_id), None)
