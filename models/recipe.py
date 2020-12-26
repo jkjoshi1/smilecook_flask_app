@@ -27,14 +27,15 @@ class Recipe(db.Model):
 
     user_id = db.Column(db.Integer(), db.ForeignKey("user.id"))
 
-    def __init__(self, name, description, no_of_serving, cook_time, direction):
-        self.id = get_last_id()
+    def __init__(self, name, description, no_of_serving, cook_time, direction, user_id):
+        #self.id = get_last_id()
         self.name = name
         self.description = description
         self.no_of_serving = no_of_serving
         self.cook_time = cook_time
         self.direction = direction
         self.is_publish = False
+        self.user_id = user_id
 
     @property
     def data(self):
