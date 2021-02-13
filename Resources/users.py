@@ -63,4 +63,4 @@ class UserResource(Resource):
                 'id': user.id,
                 'username': user.username
             }
-        return data,HTTPStatus.OK
+        return data, HTTPStatus.OK

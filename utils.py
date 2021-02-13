@@ -5,5 +5,5 @@ def hash_password(password):
     return pbkdf2_sha256.hash(password)
 
 
-def check_password(hashed, password):
-    return pbkdf2_sha256.verify(hashed,password)
+def check_password(password, hashed):
+    return pbkdf2_sha256.verify(password, hashed)
