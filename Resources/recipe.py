@@ -1,79 +1,104 @@
 from flask import request
 from flask_restful import Resource
 from http import HTTPStatus
-from models.recipe import recipe_list, Recipe
 import sys
+from flask_jwt_extended import get_jwt_identity, jwt_required, jwt_optional
+from models.recipe import Recipe
+from flask import jsonify
 
 
 class RecipeListResource(Resource):
     def get(self):
+        recipes = Recipe.get_all_published()
         data = []
-        for recipe in recipe_list:
+        for recipe in recipes:
             if recipe.is_publish:
-                data.append(recipe.data)
+                data.append(recipe.data())
 
         return {'data': data}, HTTPStatus.OK
 
+    @jwt_required
     def post(self):
-        data = request.get_json()
+        json_data = request.get_json()
+        current_user = get_jwt_identity()
         recipe = Recipe(
-            name=data['name'],
-            description=data['description'],
-            no_of_serving=data['no_of_serving'],
-            cook_time=data['cook_time'],
-            direction=data['direction']
+            name=json_data['name'],
+            description=json_data['description'],
+            no_of_serving=json_data['no_of_serving'],
+            cook_time=json_data['cook_time'],
+            direction=json_data['direction'],
+            user_id=current_user
         )
 
-        recipe_list.append(recipe)
-        print('RecipeList:', recipe_list[-1].data, file=sys.stdout)
-        return recipe.data, HTTPStatus.CREATED
+        recipe.save()
+        return recipe.data(), HTTPStatus.CREATED
 
 
 class RecipeResource(Resource):
-
+    @jwt_optional
     def get(self, recipe_id):
-        recipe = next((recipe for recipe in recipe_list if recipe.id == recipe_id and recipe.is_publish), None)
+        recipe = Recipe.get_by_id(recipe_id=recipe_id)
 
-        if recipe is not None:
-            return recipe.data, HTTPStatus.OK
-        else:
+        if recipe is None:
             return {'message': 'recipe not found'}, HTTPStatus.NOT_FOUND
+        current_user = get_jwt_identity()
 
+        if recipe.is_publish is False and recipe.user_id != current_user:
+            return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
+
+        print(recipe.data, file=sys.stderr)
+        return {'data': recipe.data()}, HTTPStatus.OK
+
+    @jwt_required
     def put(self, recipe_id):
-
         data = request.get_json()
+        recipe = Recipe.get_by_id(recipe_id=recipe_id)
 
-        recipe = next((recipe for recipe in recipe_list if recipe_id == recipe.id), None)
-
-        if recipe is not None:
-            recipe.name = data['name']
-            recipe.description = data['description']
-            recipe.no_of_serving = data['no_of_serving']
-            recipe.cook_time = data['cook_time']
-            recipe.direction = data['direction']
-        else:
+        if recipe is None:
             return {'message': 'Recipe not found'}, HTTPStatus.NOT_FOUND
 
-        return recipe.data, HTTPStatus.OK
+        current_user = get_jwt_identity()
+
+        if current_user != recipe.user_id:
+            return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
+
+        recipe.description = data['description']
+        recipe.no_of_serving = data['no_of_serving']
+        recipe.name = data['name']
+        recipe.cook_time = data['cook_time']
+        recipe.direction = data['direction']
+
+        recipe.save()
+
+        return recipe.data(), HTTPStatus.OK
 
 
 class RecipePublishResource(Resource):
+    @jwt_required
     def put(self, recipe_id):
-        recipe = next((recipe for recipe in recipe_list if recipe.id == recipe_id), None)
-
+        recipe = Recipe.get_by_id(recipe_id=recipe_id)
         if recipe is None:
             return {'message': 'Recipe not found'}, HTTPStatus.NOT_FOUND
 
+        current_user = get_jwt_identity()
+
+        if current_user != recipe.user_id:
+            return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
+
         recipe.is_publish = True
+        recipe.save()
+        return jsonify(recipe.data()), HTTPStatus.NO_CONTENT
 
-        return recipe.data, HTTPStatus.NO_CONTENT
-
+    @jwt_required
     def delete(self, recipe_id):
-        recipe = next((recipe for recipe in recipe_list if recipe.id == recipe_id), None)
+        recipe = Recipe.get_by_id(recipe_id=recipe_id)
 
         if recipe is None:
             return {'message': 'recipe not found'}, HTTPStatus.NOT_FOUND
 
-        recipe.is_publish = False
+        current_user = get_jwt_identity()
+        if current_user != recipe.user_id:
+            return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
 
+        recipe.delete()
         return {}, HTTPStatus.NO_CONTENT

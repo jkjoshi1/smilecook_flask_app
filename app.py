@@ -4,10 +4,10 @@ from flask_migrate import Migrate
 from Resources.recipe import RecipeListResource,RecipePublishResource,RecipeResource
 from config import Config
 from extensions import db, jwt
-#from models.users import User
+from models.users import User
 from models.recipe import Recipe
-from Resources.users import UserListResource, UserResource
-from Resources.token import TokenResource
+from Resources.users import UserListResource, UserResource, MeResource
+from Resources.token import TokenResource, RefreshResource, RevokeResource, black_list
 
 
 def create_app():
@@ -24,6 +24,11 @@ def register_extensions(app):
     migrate = Migrate(app, db)
     jwt.init_app(app)
 
+    @jwt.token_in_blacklist_loader
+    def check_if_token_in_blacklist(decrypted_token):
+        jti = decrypted_token['jti']
+        return jti in black_list
+
 
 def register_resources(app):
     api = Api(app)
@@ -33,6 +38,9 @@ def register_resources(app):
     api.add_resource(UserListResource, '/users')
     api.add_resource(UserResource, '/users/<string:username>')
     api.add_resource(TokenResource, '/token')
+    api.add_resource(MeResource, '/me')
+    api.add_resource(RefreshResource, '/refresh')
+    api.add_resource(RevokeResource, '/revoke')
 
 
 if __name__ == "__main__":
