@@ -5,33 +5,29 @@ import sys
 from flask_jwt_extended import get_jwt_identity, jwt_required, jwt_optional
 from models.recipe import Recipe
 from flask import jsonify
+from schemas.recipe import RecipeSchema
+
+
+recipe_schema = RecipeSchema()
+recipe_list_schema = RecipeSchema(many=True)
 
 
 class RecipeListResource(Resource):
     def get(self):
         recipes = Recipe.get_all_published()
-        data = []
-        for recipe in recipes:
-            if recipe.is_publish:
-                data.append(recipe.data())
-
-        return {'data': data}, HTTPStatus.OK
+        return recipe_list_schema.dump(recipes).data, HTTPStatus.OK
 
     @jwt_required
     def post(self):
         json_data = request.get_json()
         current_user = get_jwt_identity()
-        recipe = Recipe(
-            name=json_data['name'],
-            description=json_data['description'],
-            no_of_serving=json_data['no_of_serving'],
-            cook_time=json_data['cook_time'],
-            direction=json_data['direction'],
-            user_id=current_user
-        )
-
+        data, errors = recipe_schema.load(json_data)
+        if errors:
+            return {'message': 'Invalid Data', 'Errors': errors}, HTTPStatus.BAD_REQUEST
+        recipe = Recipe(**data,user_id=current_user)
+        #recipe.user_id = current_user
         recipe.save()
-        return recipe.data(), HTTPStatus.CREATED
+        return recipe_schema.dump(recipe).data, HTTPStatus.CREATED
 
 
 class RecipeResource(Resource):
@@ -47,7 +43,7 @@ class RecipeResource(Resource):
             return {'message': 'Access is not allowed'}, HTTPStatus.FORBIDDEN
 
         print(recipe.data, file=sys.stderr)
-        return {'data': recipe.data()}, HTTPStatus.OK
+        return {'data': recipe_schema.dump(recipe).data}, HTTPStatus.OK
 
     @jwt_required
     def put(self, recipe_id):
@@ -70,7 +66,7 @@ class RecipeResource(Resource):
 
         recipe.save()
 
-        return recipe.data(), HTTPStatus.OK
+        return recipe_schema.dump(recipe).data, HTTPStatus.OK
 
 
 class RecipePublishResource(Resource):
@@ -87,7 +83,7 @@ class RecipePublishResource(Resource):
 
         recipe.is_publish = True
         recipe.save()
-        return jsonify(recipe.data()), HTTPStatus.NO_CONTENT
+        return recipe_schema.dump(recipe).data, HTTPStatus.NO_CONTENT
 
     @jwt_required
     def delete(self, recipe_id):

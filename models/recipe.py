@@ -26,7 +26,7 @@ class Recipe(db.Model):
         self.direction = direction
         self.is_publish = False
         self.user_id = user_id
-
+    '''
     @property
     def data(self):
 
@@ -39,7 +39,7 @@ class Recipe(db.Model):
             'direction': self.direction,
             'user_id': self.user_id
         }
-
+    '''
     @classmethod
     def get_all_published(cls):
         return cls.query.filter_by(is_publish=True).all()
